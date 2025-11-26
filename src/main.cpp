@@ -4,6 +4,56 @@
 #include <QDebug>
 #include <astra/astra.hpp>
 
+#define NUMBER_OF_HORIZONTAL_MARKER 6
+#define NUMBER_OF_VERTICAL_MARKER 4
+
+#define MARKER_SIZE 200
+#define MARGIN 30
+
+#define MARKER_BORDER_BITS 1
+
+void aruco_grid_gen(){
+
+    int canvasWidth = NUMBER_OF_HORIZONTAL_MARKER * (MARKER_SIZE + 2 * MARGIN);
+    int canvasHeight = NUMBER_OF_VERTICAL_MARKER * (MARKER_SIZE + 2 * MARGIN);
+
+    cv::Mat markerImage(canvasHeight, canvasWidth, CV_8UC1, cv::Scalar::all(255));
+
+    cv::aruco::Dictionary dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_4X4_50);
+
+    // --- 2. Boucler et dessiner les marqueurs ---
+    int markerId = 0; // Commence toujours par l'ID 0
+
+    for (int y = 0; y < NUMBER_OF_VERTICAL_MARKER; y++)
+    {
+        for (int x = 0; x < NUMBER_OF_HORIZONTAL_MARKER; x++)
+        {
+            // Calculer le coin supérieur gauche de la *zone* où dessiner
+            int startX = x * (MARKER_SIZE + 2 * MARGIN) + MARGIN;
+            int startY = y * (MARKER_SIZE + 2 * MARGIN) + MARGIN;
+
+            // Créer une "Région d'Intérêt" (ROI) qui pointe vers le canevas
+            cv::Rect roi(startX, startY, MARKER_SIZE, MARKER_SIZE);
+            cv::Mat markerRegion = markerImage(roi);
+
+            // Dessiner le marqueur directement dans cette région
+            cv::aruco::generateImageMarker(
+                dictionary,
+                markerId,
+                MARKER_SIZE,
+                markerRegion,
+                MARKER_BORDER_BITS
+                );
+
+            markerId++; // Passe à l'ID suivant
+        }
+    }
+    cv::imwrite("ArucoGrid.png", markerImage);
+}
+
+
+
+
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
@@ -29,7 +79,7 @@ int main(int argc, char *argv[])
         else{
             qDebug() << ">>> ERROR : Pas de caméra RGB-D valide.";
         }
-
+        teststream.stop();
         astra::terminate();
         qDebug() << ">>> SUCCES : astra::terminate() a reussi.";
     }
@@ -51,8 +101,11 @@ int main(int argc, char *argv[])
     qDebug() << "--- FIN TEST INTEGRATION ASTRA SDK ---";
 //END ASTRA CAM INIT TEST--------------------------------------------------------------------------------
 
+    //marker image creation
+    aruco_grid_gen();
 
     MainWindow w;
     w.show();
     return a.exec();
 }
+

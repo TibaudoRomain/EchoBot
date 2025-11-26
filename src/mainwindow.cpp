@@ -7,14 +7,14 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
     m_TCPServ = new Server(this);
-    connect(m_TCPServ, &Server::serverState, this, &MainWindow::on_serverState);
-    connect(m_TCPServ, &Server::newConnection, this, &MainWindow::on_newConnection);
-    connect(this, &MainWindow::portchanged, m_TCPServ, &Server::on_portchanged);
-    connect(ui->msg, &QPushButton::clicked, m_TCPServ, &Server::on_msg_clicked);
 
     calculator = new computerVision();
     connect(calculator, &computerVision::sendImage, this, &MainWindow::on_sendImage);
     connect(this, &MainWindow::askForImage, calculator, &computerVision::on_askForImage);
+    connect(this, &MainWindow::kill, calculator, &computerVision::on_kill);
+
+    TabCam = new CamTab(ui,calculator,this);
+    TabServ = new ServerTab(ui,m_TCPServ,this);
 
     cam_timer = new QTimer(this);
     connect(cam_timer, &QTimer::timeout, this, &MainWindow::on_camtimer);
@@ -29,28 +29,27 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
+    emit kill();
     delete ui;
-}
-
-void MainWindow::on_serverState(bool state){
-
-}
-void MainWindow::on_newConnection(int howmany){
-    ui->CLientNumber->display(howmany);
-    ui->textBrowser->append("connection count changed");
-}
-void MainWindow::on_fps_valueChanged(int value){
-    cam_timer->start(1000/ui->fps->value());
 }
 
 void MainWindow::on_sendImage(QImage image){
     QPixmap pixmap = QPixmap::fromImage(image);
     current_img->setPixmap(pixmap);
 }
+
+
+
+
 void MainWindow::on_sendCalcResult(){
 
+}
+
+void MainWindow::on_fps_valueChanged(int value){
+    cam_timer->start(1000/ui->fps->value());
 }
 
 void MainWindow::on_camtimer(){
     emit askForImage();
 }
+

@@ -1,5 +1,4 @@
 #include "server.h"
-#include "mainwindow.h"
 
 Server::Server(QObject* parent) {
     TCPServ = new QTcpServer(this);
@@ -49,7 +48,7 @@ void Server::on_results(uint8_t A, uint8_t B, uint8_t C, uint8_t D, uint8_t E){
     tosend.angleD = D;
     tosend.angleE = E;
     QByteArray message(reinterpret_cast<const char*>(&tosend), sizeof(message));
-    for(QTcpSocket* client : clients){
+    for(QTcpSocket* client : std::as_const(clients)){
         qint64 bytes_sent = client->write(message);
         if (bytes_sent == -1) {
         qDebug() << "Erreur d'envoi à un client.";
@@ -66,7 +65,7 @@ void Server::on_msg_clicked(){
     tosend.angleD = 4;
     tosend.angleE = 5;
     QByteArray message(reinterpret_cast<const char*>(&tosend), sizeof(message));
-    for(QTcpSocket* client : clients){
+    for(QTcpSocket* client : std::as_const(clients)){
         qint64 bytes_sent = client->write(message);
         if (bytes_sent == -1) {
             qDebug() << "Erreur d'envoi à un client.";

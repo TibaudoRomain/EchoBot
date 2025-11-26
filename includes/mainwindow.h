@@ -8,6 +8,8 @@
 
 #include "server.h"
 #include "computervision.h"
+#include "mw_servertab.h"
+#include "mw_camtab.h"
 
 #include <QTimer>
 
@@ -26,22 +28,22 @@ public:
     ~MainWindow();
 
 signals:
-    void portchanged(int port);
     void askForImage();
+    void kill();
+
 
 private slots:
-    void on_serverState(bool state);
-    void on_newConnection(int howmany);
-
-
-
     void on_sendImage(QImage image);
+    void on_fps_valueChanged(int value);
+
     void on_sendCalcResult();
     void on_camtimer();
-    void on_fps_valueChanged(int value);
 
 private:
     Ui::MainWindow *ui;
+    CamTab* TabCam;
+    ServerTab* TabServ;
+
     Server* m_TCPServ;
     computerVision* calculator;
 
