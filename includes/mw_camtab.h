@@ -13,13 +13,15 @@ class CamTab : public QObject
 {
     Q_OBJECT
 public:
-    explicit CamTab(Ui::MainWindow *ui, computerVision* calculator, QObject *parent = nullptr);
+    explicit CamTab(Ui::MainWindow *arg_ui, computerVision* arg_calc, QObject *arg_parent = nullptr);
 
 signals:
     void askForImage();
     void update_arucodetect_parameters(const cv::aruco::DetectorParameters& newParams);
 
 public slots:
+    void on_TakePhoto(bool clicked);
+
     void on_adaptiveThreshConstant_s_sliderReleased();
     void on_adaptiveThreshConstant_v_valueChanged(double value);
 
@@ -59,6 +61,8 @@ public slots:
 private:
     Ui::MainWindow* ui;
     computerVision* calc;
+    Camera* cam;
+    int m_index = 0;
 };
 
 #endif // MW_CAMTAB_H

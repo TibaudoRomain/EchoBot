@@ -48,7 +48,7 @@ void aruco_grid_gen(){
             markerId++; // Passe à l'ID suivant
         }
     }
-    cv::imwrite("ArucoGrid.png", markerImage);
+    cv::imwrite("../../images/ArucoGrid.png", markerImage);
 }
 
 

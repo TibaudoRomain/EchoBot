@@ -28,16 +28,13 @@ public:
     ~MainWindow();
 
 signals:
-    void askForImage();
     void kill();
 
 
 private slots:
     void on_sendImage(QImage image);
-    void on_fps_valueChanged(int value);
 
     void on_sendCalcResult();
-    void on_camtimer();
 
 private:
     Ui::MainWindow *ui;

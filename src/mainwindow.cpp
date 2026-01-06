@@ -10,15 +10,10 @@ MainWindow::MainWindow(QWidget *parent)
 
     calculator = new computerVision();
     connect(calculator, &computerVision::sendImage, this, &MainWindow::on_sendImage);
-    connect(this, &MainWindow::askForImage, calculator, &computerVision::on_askForImage);
     connect(this, &MainWindow::kill, calculator, &computerVision::on_kill);
 
     TabCam = new CamTab(ui,calculator,this);
     TabServ = new ServerTab(ui,m_TCPServ,this);
-
-    cam_timer = new QTimer(this);
-    connect(cam_timer, &QTimer::timeout, this, &MainWindow::on_camtimer);
-    cam_timer->start(1000/ui->fps->value());
 
     my_scene = new QGraphicsScene(this);
     ui->image->setScene(my_scene);
@@ -34,8 +29,12 @@ MainWindow::~MainWindow()
 }
 
 void MainWindow::on_sendImage(QImage image){
+    qDebug()<<"UI has received image";
+    qDebug()<<"Dimension image : "<< image.size();
     QPixmap pixmap = QPixmap::fromImage(image);
+    qDebug()<<"Pixmap created";
     current_img->setPixmap(pixmap);
+    qDebug()<<"Image changed in the display";
 }
 
 
@@ -45,11 +44,4 @@ void MainWindow::on_sendCalcResult(){
 
 }
 
-void MainWindow::on_fps_valueChanged(int value){
-    cam_timer->start(1000/ui->fps->value());
-}
-
-void MainWindow::on_camtimer(){
-    emit askForImage();
-}
 

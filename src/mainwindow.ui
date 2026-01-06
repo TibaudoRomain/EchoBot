@@ -110,7 +110,7 @@
                <number>1</number>
               </property>
               <property name="maximum">
-               <number>60</number>
+               <number>30</number>
               </property>
               <property name="value">
                <number>1</number>
@@ -421,6 +421,13 @@
           </item>
          </layout>
         </item>
+        <item>
+         <widget class="QPushButton" name="TakePhoto">
+          <property name="text">
+           <string>Take Photo</string>
+          </property>
+         </widget>
+        </item>
        </layout>
       </widget>
      </widget>
@@ -433,7 +440,7 @@
      <x>0</x>
      <y>0</y>
      <width>1104</width>
-     <height>25</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuTCP_ServerPannel">

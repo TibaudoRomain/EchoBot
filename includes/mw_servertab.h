@@ -12,7 +12,7 @@ class ServerTab : public QObject
 {
     Q_OBJECT
 public:
-    explicit ServerTab(Ui::MainWindow *ui, Server* server, QObject *parent = nullptr);
+    explicit ServerTab(Ui::MainWindow *arg_ui, Server* arg_server, QObject *arg_parent = nullptr);
 
 signals:
     void portchanged(int port);

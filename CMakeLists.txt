@@ -29,6 +29,9 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
 find_package(Qt6 REQUIRED COMPONENTS Network)
 find_package(Qt6 REQUIRED COMPONENTS Core)
 find_package(Qt6 REQUIRED COMPONENTS Core)
+find_package(Qt6 REQUIRED COMPONENTS Core)
+find_package(Qt6 REQUIRED COMPONENTS Core)
+find_package(Qt6 REQUIRED COMPONENTS Core)
 find_package(OpenCV REQUIRED)
 
 #Automatically find files
@@ -98,6 +101,9 @@ target_link_libraries(ServerArm PRIVATE
         ${ASTRA_SDK_LIBS}
         ${OPENBLAS_LIBS}
 )
+target_link_libraries(ServerArm PRIVATE Qt6::Core)
+target_link_libraries(ServerArm PRIVATE Qt6::Core)
+target_link_libraries(ServerArm PRIVATE Qt6::Core)
 target_link_libraries(ServerArm PRIVATE Qt6::Core)
 target_link_libraries(ServerArm PRIVATE Qt6::Core)
 
