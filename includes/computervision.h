@@ -5,17 +5,20 @@
 #include <QObject>
 #include <QImage>
 
+#include <map>
 #include <vector>
 #include <QVector3D>
 #include <QVector2D>
 
 #include "camera.h"
+#include "videoreader.h"
 
 #include <astra/astra.hpp>
 #include <opencv2/opencv.hpp>
 #include <opencv2/opencv_modules.hpp>
 
 using namespace std;
+
 
 struct FrameData{
     cv::Mat rgb;
@@ -37,16 +40,20 @@ public:
     computerVision();
     cv::aruco::DetectorParameters getDetectorParameters();
     Camera *camera;
+    videoReader *video;
     FrameData currentFrame;
 
 public slots:
-    void on_frameOut(QPair<cv::Mat, cv::Mat> Frame);
+    void on_frameOut(cv::Mat RFrame, std::optional<cv::Mat> DFrame);
     void on_update_arucodetect_parameters(const cv::aruco::DetectorParameters& newParams);
     void on_kill();
 
+    void videohandler(int id_videoType, bool on);
+
 signals:
     void sendImage(QImage image);
-    void sendCalcResults();
+    void sendCalcResults(std::map<int,cv::Mat>);
+    void SClog(QString message_to_display);
 
 private:
     cv::VideoCapture capture;
@@ -74,8 +81,8 @@ private:
     vector<cv::Vec3d> aruco_angles;
 
 
-    void find_arucos(cv::Mat RGB, cv::Mat Depth);
-    void estimate_aruco_pos(vector<vector<cv::Point2f>> corners);
+    void find_arucos(cv::Mat RGB);
+    map<int,cv::Mat> estimate_aruco_pos(vector<vector<cv::Point2f>> corners);
     cv::Vec3d rotationMatrixToEulerAngles(cv::Mat &R);
 
     void display_image(cv::Mat image_to_display, bool is_bgr);

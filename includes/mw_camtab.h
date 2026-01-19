@@ -2,8 +2,30 @@
 #define MW_CAMTAB_H
 
 #include <QObject>
+#include <QCheckBox>
 //#include "ui_mainwindow.h"
 #include "computervision.h"
+
+//definitions to configure the aruco detector
+#define ADAPTATIVETHRESHOLDCONSTANT 0
+#define ADAPTATIVETHRESHOLDWINSIZEMAX 1
+#define ADAPTATIVETHRESHOLDWINSIZEMIN 2
+#define ADAPTATIVETHRESHOLDWINSIZESTEP 3
+#define CORNERREFINEMENTWINSIZE 4
+#define CORNERREFINEMENTMAXITERATIONS 5
+#define CORNERREFINEMENTMINACCURACY 6
+#define MINCORNERDISTANCERATE 7
+#define MINMARKERDISTANCERATE 8
+#define ERRORCORRECTIONRATE 9
+#define MINMARKERPERIMETERRATE 10
+#define POLYGONALAPPROXACCURACYRATE 11
+
+
+//definitions for source selection
+#define BUTTON_START 511
+#define BUTTON_STOP 512
+#define CAM_CHECKBOX 513
+#define VIDEO_CHECKBOX 514
 
 namespace Ui {
 class MainWindow;
@@ -15,54 +37,26 @@ class CamTab : public QObject
 public:
     explicit CamTab(Ui::MainWindow *arg_ui, computerVision* arg_calc, QObject *arg_parent = nullptr);
 
+
 signals:
     void askForImage();
     void update_arucodetect_parameters(const cv::aruco::DetectorParameters& newParams);
 
 public slots:
-    void on_TakePhoto(bool clicked);
-
-    void on_adaptiveThreshConstant_s_sliderReleased();
-    void on_adaptiveThreshConstant_v_valueChanged(double value);
-
-    void on_adaptiveThreshWinSizeMax_s_sliderReleased();
-    void on_adaptiveThreshWinSizeMax_v_valueChanged(int value);
-
-    void on_adaptiveThreshWinSizeMin_s_sliderReleased();
-    void on_adaptiveThreshWinSizeMin_v_valueChanged(int value);
-
-    void on_adaptiveThreshWinSizeStep_s_sliderReleased();
-    void on_adaptiveThreshWinSizeStep_v_valueChanged(int value);
-
-    void on_cornerRefinementWinSize_s_sliderReleased();
-    void on_cornerRefinementWinSize_v_valueChanged(int value);
-
-    void on_cornerRefinementMaxIterations_s_sliderReleased();
-    void on_cornerRefinementMaxIterations_v_valueChanged(int value);
-
-    void on_cornerRefinementMinAccuracy_s_sliderReleased();
-    void on_cornerRefinementMinAccuracy_v_valueChanged(double value);
-
-    void on_minCornerDistanceRate_s_sliderReleased();
-    void on_minCornerDistanceRate_v_valueChanged(double value);
-
-    void on_minMarkerDistanceRate_s_sliderReleased();
-    void on_minMarkerDistanceRate_v_valueChanged(double value);
-
-    void on_errorCorrectionRate_s_sliderReleased();
-    void on_errorCorrectionRate_v_valueChanged(double value);
-
-    void on_minMarkerPerimeterRate_s_sliderReleased();
-    void on_minMarkerPerimeterRate_v_valueChanged(double value);
-
-    void on_polygonalApproxAccuracyRate_s_sliderReleased();
-    void on_polygonalApproxAccuracyRate_v_valueChanged(double value);
+    void on_TakePhoto(bool clicked);;
+    void Clog(QString message_to_display);
 
 private:
-    Ui::MainWindow* ui;
-    computerVision* calc;
+    Ui::MainWindow* ui = nullptr;
+    computerVision* calc = nullptr;
     Camera* cam;
+    videoReader* vid;
     int m_index = 0;
+
+    void configurationSlider_handler(int index);
+    void configurationValue_handler(int index, long value);
+    void sourceSelectionHandler(int index, Qt::CheckState state = Qt::Unchecked);
+
 };
 
 #endif // MW_CAMTAB_H

@@ -1,4 +1,5 @@
 #include "computervision.h"
+#include "mw_camtab.h"
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/objdetect/aruco_detector.hpp>
 #include <QPair>
@@ -8,27 +9,37 @@ computerVision::computerVision() {
     connect(camera, &Camera::frame_out, this, &computerVision::on_frameOut);
     detectorParams = cv::aruco::DetectorParameters();
 
-    detector = new cv::aruco::ArucoDetector(aru_dico,detectorParams);
-    camera->start();
-} 
+    video = new videoReader(15, "../../videos/test.mp4", this);
+    connect(video, &videoReader::frameOut, this, &computerVision::on_frameOut);
 
-void computerVision::on_frameOut(QPair<cv::Mat, cv::Mat> Frame){
+    detector = new cv::aruco::ArucoDetector(aru_dico,detectorParams);
+    //camera->start();
+}
+
+void computerVision::on_frameOut(cv::Mat RFrame, std::optional<cv::Mat> DFrame){
     cv::Mat grayscale;
     cv::Mat blurred;
-    cv::cvtColor(Frame.first, grayscale, cv::COLOR_BGR2GRAY);
+    cv::cvtColor(RFrame, grayscale, cv::COLOR_BGR2GRAY);
     currentFrame.grayscale = grayscale;
-    currentFrame.rgb = Frame.first.clone();
-    currentFrame.depth = Frame.second.clone();
+    currentFrame.rgb = RFrame.clone();
+
     qDebug()<<"Frame copied to computer vision buffer";
     qDebug() << "RGB dimensions:" << currentFrame.rgb.cols << "x" << currentFrame.rgb.rows;
-    qDebug() << "Depth dimensions:" << currentFrame.depth.cols << "x" << currentFrame.depth.rows;
 
+    if(DFrame.has_value()){
+        currentFrame.depth = DFrame.value().clone();
+        qDebug() << "Depth dimensions:" << currentFrame.depth.cols << "x" << currentFrame.depth.rows;
+    }
     cv::GaussianBlur(currentFrame.grayscale,blurred, cv::Size(5,5),1);
     currentFrame.grayscale = blurred.clone();
 
-    find_arucos(currentFrame.grayscale, currentFrame.depth);
+    find_arucos(currentFrame.grayscale);
     qDebug()<<"Aruco search done!";
-    estimate_aruco_pos(aruco_corners);
+
+
+    emit sendCalcResults(estimate_aruco_pos(aruco_corners));
+
+
     qDebug()<<"Aruco positions converted into real world coordinates!";
 
     currentFrame.toDisplay = highlight_arucos(currentFrame);
@@ -36,7 +47,7 @@ void computerVision::on_frameOut(QPair<cv::Mat, cv::Mat> Frame){
     display_image(currentFrame.toDisplay, true);
 }
 
-void computerVision::find_arucos(cv::Mat RGB, cv::Mat Depth){
+void computerVision::find_arucos(cv::Mat RGB){
     aruco_corners.clear();
     aruco_rejected.clear();
     aruco_ids.clear();
@@ -47,30 +58,12 @@ void computerVision::find_arucos(cv::Mat RGB, cv::Mat Depth){
     if (aruco_corners.size() != 0){
         qDebug()<< aruco_corners.size() << " arucos trouvés !";
     }
-
-    /*int index = 0;
-    for (vector<cv::Point2f> rectangle : aruco_corners){
-        qDebug()<<"balise 3.4." << index;
-        int centroid_x = (rectangle[0].x + rectangle[2].x)/2;
-        int centroid_y = (rectangle[0].y + rectangle[2].y)/2;
-
-        qDebug()<<"balise 3.4." << index << ".1";
-
-        int centroid_z = Depth.at<int16_t>(centroid_y,centroid_x);
-
-        qDebug()<<"balise 3.4." << index << ".2";
-
-        aruco_SpacePositions.push_back(QVector3D(centroid_x,centroid_y,centroid_z));
-        index++;
-
-        qDebug()<<"balise 3.4." << index << ".2";
-
-        qDebug()<<"Coordonnées : "<< centroid_x << "," << centroid_y << "," << centroid_z << ";";
-    }*/
 }
 
-void computerVision::estimate_aruco_pos(vector<vector<cv::Point2f>> corners){
+map<int,cv::Mat> computerVision::estimate_aruco_pos(vector<vector<cv::Point2f>> corners){
     std::vector<cv::Point3f> objPoints;
+    map<int,cv::Mat> aruco_rotations;
+
     objPoints.push_back(cv::Point3f(-markerLength_m/2.f, markerLength_m/2.f, 0));
     objPoints.push_back(cv::Point3f(markerLength_m/2.f, markerLength_m/2.f, 0));
     objPoints.push_back(cv::Point3f(markerLength_m/2.f, -markerLength_m/2.f, 0));
@@ -86,13 +79,18 @@ void computerVision::estimate_aruco_pos(vector<vector<cv::Point2f>> corners){
         qDebug()<<"Aruco n°"<< i << ": Rodrigues";
 
         cv::Vec3d YPR_angle = rotationMatrixToEulerAngles(rotationMatrix);
-        qDebug() << "ArUco ID:" << aruco_ids[i];
-        qDebug() << "  Angle X (Roll) :" << YPR_angle[0] << "°";
-        qDebug() << "  Angle Y (Pitch):" << YPR_angle[1] << "°";
-        qDebug() << "  Angle Z (Yaw)  :" << YPR_angle[2] << "°";
+        //debug on UI
+
+        emit SClog(QString(&"ArUco ID:" [ aruco_ids[i]]));
+        emit SClog("    Angle Axe Normal (Pitch) :" + QString::number(YPR_angle[0]) + "°");
+        emit SClog("    Angle Axe Vertical (Yaw) :" + QString::number(YPR_angle[1]) + "°");
+        emit SClog("    Angle Axe Cam2Arm (Roll) :" + QString::number(YPR_angle[2]) + "°");
 
         aruco_angles.push_back(YPR_angle);
+        aruco_rotations.insert({aruco_ids[i],rotationMatrix});
     }
+
+    return aruco_rotations;
 }
 
 
@@ -218,6 +216,22 @@ void computerVision::resolve_occlusion(){
     //----ICI METTRE KALMAN---/les paramètres doivent être adaptés
 }
 
+void computerVision::videohandler(int id_videoType, bool on){
+    switch (id_videoType) {
+    case 0:
+        /*if(on){video->start();}
+        else{camera->stop();}*/
+        break;
+    case 1:
+        if(on){camera->start();}
+        else{camera->stop();}
+        break;
+    default:
+        qDebug()<<"Bad index";
+        break;
+    }
+}
+
 
 void computerVision::on_update_arucodetect_parameters(const cv::aruco::DetectorParameters& newParams){
     qDebug()<<"Updating Aruco Parameters";
@@ -232,4 +246,5 @@ cv::aruco::DetectorParameters computerVision::getDetectorParameters() {
 
 void computerVision::on_kill(){
     camera->stop();
+    video->stop();
 }

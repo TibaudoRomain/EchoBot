@@ -21,14 +21,12 @@ class Camera : public QObject, public astra::FrameListener
     Q_OBJECT
 public:
     explicit Camera(int fps, QObject *parent = nullptr);
-
-    int calibrate();
     void start();
     void stop();
+    int calibrate();
+
 
 private:
-    int CHECKERBOARD[2]{6,9};
-
     //ASTRA THINGS --------------------------------------------------------
     std::unique_ptr<astra::StreamSet> streamset;
     std::unique_ptr<astra::StreamReader> reader;
@@ -53,12 +51,13 @@ private:
     QPair<cv::Mat,cv::Mat> FromAstraToOpenCV(FrameFromAstra in);
 
 public slots:
+
     void on_setfps(int fps);
     void on_timer();
     virtual void on_frame_ready(astra::StreamReader& reader, astra::Frame& frame) override;
 
 signals:
-    void frame_out(QPair<cv::Mat,cv::Mat> out);
+    void frame_out(cv::Mat RGB,cv::Mat Depth);
 };
 
 #endif // CAMERA_H

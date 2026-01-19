@@ -12,8 +12,10 @@ MainWindow::MainWindow(QWidget *parent)
     connect(calculator, &computerVision::sendImage, this, &MainWindow::on_sendImage);
     connect(this, &MainWindow::kill, calculator, &computerVision::on_kill);
 
+
     TabCam = new CamTab(ui,calculator,this);
     TabServ = new ServerTab(ui,m_TCPServ,this);
+
 
     my_scene = new QGraphicsScene(this);
     ui->image->setScene(my_scene);

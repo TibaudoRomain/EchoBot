@@ -100,7 +100,7 @@ void Camera::on_frame_ready(astra::StreamReader& reader, astra::Frame& frame){
             return;
         }
         const auto OCV_frame = FromAstraToOpenCV(A_frame);
-        emit frame_out(OCV_frame);
+        emit frame_out(OCV_frame.first, OCV_frame.second);
         fps_timer->restart();
     }
 }
