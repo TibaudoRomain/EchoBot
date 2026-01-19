@@ -12,6 +12,7 @@
 
 #include "camera.h"
 #include "videoreader.h"
+#include "armgeometry.h"
 
 #include <astra/astra.hpp>
 #include <opencv2/opencv.hpp>
@@ -40,6 +41,7 @@ public:
     computerVision();
     cv::aruco::DetectorParameters getDetectorParameters();
     Camera *camera;
+    ArmGeometry *geometry;
     videoReader *video;
     FrameData currentFrame;
 

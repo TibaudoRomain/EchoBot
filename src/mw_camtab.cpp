@@ -14,12 +14,16 @@ CamTab::CamTab(Ui::MainWindow *arg_ui, computerVision* arg_calc, QObject *arg_pa
     if (!arg_calc->video) {
         qFatal("ERREUR CRITIQUE: 'arg_calc->video' est NULL !");
     }
+    if (!arg_calc->geometry) {
+        qFatal("ERREUR CRITIQUE: 'arg_calc->geometry' est NULL !");
+    }
 
 
     this->calc = arg_calc;
     this->ui = arg_ui;
     this->cam = arg_calc->camera;
     this->vid = arg_calc->video;
+    this->geometry = arg_calc->geometry;
 
     //Signals connections
     connect(this, &CamTab::update_arucodetect_parameters, calc, &computerVision::on_update_arucodetect_parameters);
@@ -27,10 +31,12 @@ CamTab::CamTab(Ui::MainWindow *arg_ui, computerVision* arg_calc, QObject *arg_pa
     //Slots connections
         //LOGS
     connect(calc, &computerVision::SClog, this, &CamTab::Clog);
+    connect(geometry, &ArmGeometry::SClog, this, &CamTab::Clog);
 
         //TOOLS
     connect(ui->fps, &QSpinBox::valueChanged, this->calc->camera, &Camera::on_setfps);
     connect(ui->TakePhoto, &QPushButton::clicked, this, &CamTab::on_TakePhoto);
+    connect(ui->calibration, &QPushButton::clicked, geometry, &ArmGeometry::calibrateZero);
 
         //VIDEO CONFIG
     connect(ui->visionStart, &QPushButton::clicked, this, [=](bool c) { sourceSelectionHandler(BUTTON_START); } );

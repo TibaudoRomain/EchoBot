@@ -1,5 +1,6 @@
 #include "computervision.h"
 #include "mw_camtab.h"
+#include "armgeometry.h"
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/objdetect/aruco_detector.hpp>
 #include <QPair>
@@ -11,6 +12,9 @@ computerVision::computerVision() {
 
     video = new videoReader(15, "../../videos/test.mp4", this);
     connect(video, &videoReader::frameOut, this, &computerVision::on_frameOut);
+
+    geometry = new ArmGeometry();
+    connect(this, &computerVision::sendCalcResults, geometry, &ArmGeometry::on_sendCalcResults);
 
     detector = new cv::aruco::ArucoDetector(aru_dico,detectorParams);
     //camera->start();
@@ -72,19 +76,19 @@ map<int,cv::Mat> computerVision::estimate_aruco_pos(vector<vector<cv::Point2f>> 
     for(size_t i = 0; i < corners.size(); i++){
         cv::Vec3d rvec, tvec;
         cv::solvePnP(objPoints,corners[i], cameraMatrix, distCoeffs, rvec, tvec) ;
-        qDebug()<<"Aruco n°"<< i << ": found translation and rotation vectors";
+        //qDebug()<<"Aruco n°"<< i << ": found translation and rotation vectors";
 
         cv::Mat rotationMatrix;
         cv::Rodrigues(rvec, rotationMatrix);
-        qDebug()<<"Aruco n°"<< i << ": Rodrigues";
+        //qDebug()<<"Aruco n°"<< i << ": Rodrigues";
 
         cv::Vec3d YPR_angle = rotationMatrixToEulerAngles(rotationMatrix);
         //debug on UI
 
-        emit SClog(QString(&"ArUco ID:" [ aruco_ids[i]]));
-        emit SClog("    Angle Axe Normal (Pitch) :" + QString::number(YPR_angle[0]) + "°");
-        emit SClog("    Angle Axe Vertical (Yaw) :" + QString::number(YPR_angle[1]) + "°");
-        emit SClog("    Angle Axe Cam2Arm (Roll) :" + QString::number(YPR_angle[2]) + "°");
+        emit SClog("ArUco ID : " + QString::number(aruco_ids[i]));
+        emit SClog("    Angle Axe 0 Normal (Pitch) :" + QString::number(YPR_angle[0]) + "°");
+        emit SClog("    Angle Axe 1 Vertical (Yaw) :" + QString::number(YPR_angle[1]) + "°");
+        emit SClog("    Angle Axe 2 Cam2Arm (Roll) :" + QString::number(YPR_angle[2]) + "°");
 
         aruco_angles.push_back(YPR_angle);
         aruco_rotations.insert({aruco_ids[i],rotationMatrix});

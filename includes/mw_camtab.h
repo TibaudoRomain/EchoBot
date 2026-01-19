@@ -49,8 +49,9 @@ public slots:
 private:
     Ui::MainWindow* ui = nullptr;
     computerVision* calc = nullptr;
-    Camera* cam;
-    videoReader* vid;
+    Camera* cam = nullptr;
+    videoReader* vid = nullptr;
+    ArmGeometry* geometry = nullptr;
     int m_index = 0;
 
     void configurationSlider_handler(int index);

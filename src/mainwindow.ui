@@ -609,6 +609,13 @@
          </layout>
         </item>
         <item>
+         <widget class="QPushButton" name="calibration">
+          <property name="text">
+           <string>Calibrate</string>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="QPushButton" name="TakePhoto">
           <property name="enabled">
            <bool>false</bool>
@@ -630,7 +637,7 @@
      <x>0</x>
      <y>0</y>
      <width>1301</width>
-     <height>21</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuTCP_ServerPannel">
