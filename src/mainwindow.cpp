@@ -8,10 +8,12 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
     m_TCPServ = new Server(this);
 
-    calculator = new computerVision();
+    calculator = new computerVision(ui->fps->value());
     connect(calculator, &computerVision::sendImage, this, &MainWindow::on_sendImage);
     connect(this, &MainWindow::kill, calculator, &computerVision::on_kill);
 
+    geom = calculator->geometry;
+    connect(geom, &ArmGeometry::anglesToServ, m_TCPServ, &Server::on_results);
 
     TabCam = new CamTab(ui,calculator,this);
     TabServ = new ServerTab(ui,m_TCPServ,this);

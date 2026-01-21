@@ -38,7 +38,7 @@ class computerVision : public QObject
 {
     Q_OBJECT
 public:
-    computerVision();
+    computerVision(int start_fps);
     cv::aruco::DetectorParameters getDetectorParameters();
     Camera *camera;
     ArmGeometry *geometry;

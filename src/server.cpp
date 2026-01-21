@@ -39,14 +39,13 @@ void Server::new_client(){
     emit newConnection(clients.length());
 }
 
-void Server::on_results(uint8_t A, uint8_t B, uint8_t C, uint8_t D, uint8_t E){
+void Server::on_results(int8_t A, int8_t B, int8_t C, int8_t D){
     message tosend;
     tosend.securityKey = SK;
     tosend.angleA = A;
     tosend.angleB = B;
     tosend.angleC = C;
     tosend.angleD = D;
-    tosend.angleE = E;
     QByteArray message(reinterpret_cast<const char*>(&tosend), sizeof(message));
     for(QTcpSocket* client : std::as_const(clients)){
         qint64 bytes_sent = client->write(message);

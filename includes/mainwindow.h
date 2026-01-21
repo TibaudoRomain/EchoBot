@@ -10,6 +10,7 @@
 #include "computervision.h"
 #include "mw_servertab.h"
 #include "mw_camtab.h"
+#include "armgeometry.h"
 
 #include <QTimer>
 
@@ -43,6 +44,7 @@ private:
 
     Server* m_TCPServ;
     computerVision* calculator;
+    ArmGeometry* geom;
 
     QTimer* cam_timer;
 

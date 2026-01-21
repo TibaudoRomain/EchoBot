@@ -68,7 +68,7 @@ cv::Mat ArmGeometry::getRotationForMember(int memberId, const std::map<int, cv::
                 // R_membre = R_raw * R_correction
                 cv::Mat R_member = R_raw * R_correct;
 
-                qDebug() << "Membre" << memberId << "detecte via Aruco" << arucoID << "(Face" << faceLocation << ")";
+                //qDebug() << "Membre" << memberId << "detecte via Aruco" << arucoID << "(Face" << faceLocation << ")";
                 return R_member;
             }
         }
@@ -77,103 +77,218 @@ cv::Mat ArmGeometry::getRotationForMember(int memberId, const std::map<int, cv::
 }
 
 
+double ArmGeometry::getRobustAngle(cv::Mat R_rel, int Axis){
+    if (Axis != AXIS_Z){
+        cv::Vec3d rvec;
 
-// Helper: Convertit Rotation Matrix -> Euler (Pitch/Yaw/Roll en degrés)
-// Reprise de la logique standard OpenCV/Rodrigues check
-cv::Vec3d ArmGeometry::rotationMatrixToEulerAngles(cv::Mat &R)
-{
-    // Vérification de singularité (Gimbal Lock)
-    float sy = sqrt(R.at<double>(0,0) * R.at<double>(0,0) +  R.at<double>(1,0) * R.at<double>(1,0));
-    bool singular = sy < 1e-6;
+        cv::Rodrigues(R_rel, rvec);
 
-    float x, y, z;
-    if (!singular)
-    {
-        x = atan2(R.at<double>(2,1) , R.at<double>(2,2));
-        y = atan2(-R.at<double>(2,0), sy);
-        z = atan2(R.at<double>(1,0), R.at<double>(0,0));
+        double angle_rad = rvec[Axis];
+
+        return angle_rad*180/CV_PI ;}
+    else{
+        double sy = std::sqrt(R_rel.at<double>(0,0) * R_rel.at<double>(0,0) +  R_rel.at<double>(1,0) * R_rel.at<double>(1,0));
+
+        bool singular = sy < 1e-6; // Si proche de 0, on est dans un cas particulier
+
+        double x, y, z;
+        if (!singular) {
+            // Formules standard
+            x = std::atan2(R_rel.at<double>(2,1) , R_rel.at<double>(2,2));
+            y = std::atan2(-R_rel.at<double>(2,0), sy);
+            z = std::atan2(R_rel.at<double>(1,0), R_rel.at<double>(0,0));
+        } else {
+            // Cas singulier (rare mais possible)
+            x = std::atan2(-R_rel.at<double>(1,2), R_rel.at<double>(1,1));
+            y = std::atan2(-R_rel.at<double>(2,0), sy);
+            z = 0;
+        }
+
+        // Convertir les radians en degrés
+        cv::Vec3d vec_angles = cv::Vec3d(x, y, z) * (180.0 / CV_PI);
+        return vec_angles[2];
     }
-    else
-    {
-        x = atan2(-R.at<double>(1,2), R.at<double>(1,1));
-        y = atan2(-R.at<double>(2,0), sy);
-        z = 0;
-    }
-    // Retour en degrés
-    return cv::Vec3d(x * 180.0/CV_PI, y * 180.0/CV_PI, z * 180.0/CV_PI);
 }
 
-void ArmGeometry::on_sendCalcResults(std::map<int, cv::Mat> results)
-{
+
+std::vector<double> ArmGeometry::get_raw_angles(std::map<int, cv::Mat> ArucoRotationMatrices){
+    std::vector<double> rawAngles;
+
     // 1. Récupération des matrices absolues (Camera -> Membre)
-    cv::Mat R_base = getRotationForMember(BASE, results);
-    cv::Mat R_m1   = getRotationForMember(MEMBRE_1, results);
-    cv::Mat R_m2   = getRotationForMember(MEMBRE_2, results);
-    cv::Mat R_m3   = getRotationForMember(MEMBRE_3, results);
-    cv::Mat R_m4   = getRotationForMember(MEMBRE_4, results);
+    cv::Mat R_base = getRotationForMember(BASE, ArucoRotationMatrices);
+    cv::Mat R_m1   = getRotationForMember(MEMBRE_1, ArucoRotationMatrices);
+    cv::Mat R_m2   = getRotationForMember(MEMBRE_2, ArucoRotationMatrices);
+    cv::Mat R_m3   = getRotationForMember(MEMBRE_3, ArucoRotationMatrices);
+    cv::Mat R_m4   = getRotationForMember(MEMBRE_4, ArucoRotationMatrices);
 
-
-    std::cout << "Base : " << std::endl;
-    std::cout << R_base << std::endl;
-    std::cout << "Membre 1 : " << std::endl;
-    std::cout << R_m1 << std::endl;
-    std::cout << "Membre 2 : " << std::endl;
-    std::cout << R_m2 << std::endl;
-    std::cout << "Membre 3 : " << std::endl;
-    std::cout << R_m3 << std::endl;
-    std::cout << "Membre 4 : " << std::endl;
-    std::cout << R_m4 << std::endl;
-
-    current_joint_angles.clear();
+    if (!R_base.empty() && Old_base.empty()){
+        Old_base = R_base;
+    }
+    else{
+        R_base = Old_base;
+    }
 
     // 2. Calculs Matriciels (Parent -> Enfant)
     // IMPORTANT: R_relatif = Transposée(R_parent) * R_enfant
 
     // --- A0 (Base -> M1) ---
-    // M1 est sur l'axe vertical, c'est probablement un YAW (rotation autour de Y ou Z local)
-    if (!R_base.empty() && !R_m1.empty()) {
-        cv::Mat R_rel = R_base.t() * R_m1;
-        cv::Vec3d angles = rotationMatrixToEulerAngles(R_rel);
-        std::cout << "\n\nM0 -> M1 Angles : " << std::endl;
-        std::cout << angles << "\n\n" << std::endl;
-        m_raw_angles.push_back(angles[2]); // Teste [1] (Yaw) ou [2] (Roll)
-    } else m_raw_angles.push_back(FAILURE_INDEX);
+    double angle_A0 = FAILURE_INDEX;
+
+    if (!R_base.empty()) {
+        cv::Mat R_target;
+        QString sourceUsed = "";
+
+        if (!R_m1.empty()) {
+            R_target = R_m1;
+            sourceUsed = "M1 (Direct)";
+        }
+        else if (!R_m2.empty()) {
+            R_target = R_m2;
+            sourceUsed = "M2 (Inference)";
+        }
+        else if (!R_m3.empty()) {
+            R_target = R_m3;
+            sourceUsed = "M3 (Inference)";
+        }
+        else if (!R_m4.empty()) {
+            R_target = R_m4;
+            sourceUsed = "M4 (Inference)";
+        }
+
+        if (!R_target.empty()) {
+            cv::Mat R_rel = R_base.t() * R_target;
+            double calculated_angle = getRobustAngle(R_rel, AXIS_Z);
+            if(sourceUsed == "M1 (Direct)"){    calculated_angle+=180;   } // Yaw
+            while (calculated_angle > 180.0)  calculated_angle -= 360.0;
+            while (calculated_angle < -180.0) calculated_angle += 360.0;
+            angle_A0 = calculated_angle;
+        }
+    }
+
+    rawAngles.push_back(angle_A0);
 
     // --- A1 (M1 -> M2) ---
-    // M2 est un bras qui monte/descend (PITCH)
+    double angle_A1 = FAILURE_INDEX;
     if (!R_m1.empty() && !R_m2.empty()) {
         cv::Mat R_rel = R_m1.t() * R_m2;
-        cv::Vec3d angles = rotationMatrixToEulerAngles(R_rel);
-        std::cout << "\n\nM1 -> M2 Angles : " << std::endl;
-        std::cout << angles << "\n\n" << std::endl;
-        m_raw_angles.push_back(angles[1]); // Souvent [0] pour Pitch (X)
-    } else m_raw_angles.push_back(FAILURE_INDEX);
+        angle_A1 = getRobustAngle(R_rel, AXIS_Y);
+    }
+    else if(!R_base.empty() && !R_m2.empty()){
+        cv::Mat R_rel = R_base.t() * R_m2;
+        angle_A1 = getRobustAngle(R_rel, AXIS_Y);
+    }
+    rawAngles.push_back(angle_A1); // Pitch
 
     // --- A2 (M2 -> M3) ---
-    // M3 est un bras qui monte/descend (PITCH)
     if (!R_m2.empty() && !R_m3.empty()) {
         cv::Mat R_rel = R_m2.t() * R_m3;
-        cv::Vec3d angles = rotationMatrixToEulerAngles(R_rel);
-        std::cout << "\n\nM2 -> M3 Angles : " << std::endl;
-        std::cout << angles << "\n\n" << std::endl;
-        m_raw_angles.push_back(angles[1]); // Souvent [0] pour Pitch (X)
-    } else m_raw_angles.push_back(FAILURE_INDEX);
+        rawAngles.push_back(getRobustAngle(R_rel, AXIS_Y)); // Axe 1 = Y
+    } else rawAngles.push_back(FAILURE_INDEX);
 
     // --- A3 (M3 -> M4) ---
-    // M4 est un bras qui monte/descend (PITCH)
     if (!R_m3.empty() && !R_m4.empty()) {
         cv::Mat R_rel = R_m3.t() * R_m4;
-        cv::Vec3d angles = rotationMatrixToEulerAngles(R_rel);
-        std::cout << "\n\nM3 -> M4 Angles : " << std::endl;
-        std::cout << angles << "\n\n" << std::endl;
-        m_raw_angles.push_back(angles[1]); // Souvent [0] pour Pitch (X)
-    } else m_raw_angles.push_back(FAILURE_INDEX);
+        rawAngles.push_back(getRobustAngle(R_rel, AXIS_Y)); // Axe 1 = Y
+    } else rawAngles.push_back(FAILURE_INDEX);
 
-    // 3. Emission du résultat (optionnel)
-    // emit anglesCalculated(current_joint_angles);
-    qDebug()<< "______________________________________________________________";
-    qDebug()<< "Angles des moteurs trouvés : "<<current_joint_angles[0]<<","<<current_joint_angles[1]<<","<<current_joint_angles[2]<<","<<current_joint_angles[3]<<";";
-    qDebug()<< "______________________________________________________________";
+    return rawAngles;
+}
+
+
+std::vector<double> ArmGeometry::rawAngles_to_current(std::vector<double> Raw_Angles){
+    std::vector<double> Results;
+
+    //Security
+    if (current_joint_angles.size() != 4) { current_joint_angles = {0.0, 0.0, 0.0, 0.0};    }
+    if (m_offsets.size() != 4) {    m_offsets = {0.0, 0.0, 0.0, 0.0};   }
+
+    for (size_t i = 0; i < 4; i++) {
+        double raw_val = 0.0;
+        double final_val = 0.0;
+
+        if (i < Raw_Angles.size()) {
+            raw_val = Raw_Angles[i];
+        } else {
+            raw_val = FAILURE_INDEX;
+        }
+
+        if (raw_val != FAILURE_INDEX) { final_val = raw_val - m_offsets[i]; } //if aruco found we give the value - the offset
+        else{   final_val = current_joint_angles[i];    } //we give the old value if no aruco is found
+
+        Results.push_back(final_val);
+    }
+    return Results;
+}
+
+std::vector<double> ArmGeometry::angle_filter(std::vector<double> Pre_filter_angles){
+    std::vector<double> filtered_result;
+
+    // Sécurité : Initialisation de la mémoire si les tailles ne correspondent pas
+    // (ex: premier appel de la fonction)
+    if (m_prev_filtered_angles.size() != Pre_filter_angles.size()) {
+        m_prev_filtered_angles = Pre_filter_angles;
+        // On retourne direct l'entrée pour ce premier tour, pas besoin de filtrer
+        return Pre_filter_angles;
+    }
+
+    filtered_result.reserve(Pre_filter_angles.size());
+
+    for (size_t i = 0; i < Pre_filter_angles.size(); i++) {
+        double raw_val = Pre_filter_angles[i];
+        double prev_val = m_prev_filtered_angles[i];
+
+        // 1. Calcul de la dynamique (Vitesse du changement)
+        double diff = std::abs(raw_val - prev_val);
+        double alpha = min_alpha;
+
+        // 2. Adaptation de Alpha
+        if (diff > angle_dif_threshold) {
+            // Mouvement rapide -> Réactivité max
+            alpha = max_alpha;
+        } else {
+            // Mouvement lent ou bruit -> Interpolation entre min et max
+            // Plus on est proche de 0 diff, plus on est proche de min_alpha
+            double ratio = diff / angle_dif_threshold;
+            alpha = min_alpha + (ratio * (max_alpha - min_alpha));
+        }
+
+        // 3. Application du filtre exponentiel (Low Pass)
+        // Formule : Nouveau = (Ancien * (1-alpha)) + (Brut * alpha)
+        double smooth_val = (prev_val * (1.0 - alpha)) + (raw_val * alpha);
+
+        // Mise à jour de la mémoire et du résultat
+        m_prev_filtered_angles[i] = smooth_val;
+        filtered_result.push_back(smooth_val);
+    }
+
+    return filtered_result;
+
+}
+
+
+void ArmGeometry::on_sendCalcResults(std::map<int, cv::Mat> results)
+{
+    m_raw_angles = get_raw_angles(results);
+    if(m_raw_angles.size() == 4){
+        qDebug()<< "______________________________________________________________";
+        qDebug()<< "Angles des moteurs (Raw) : "<<m_raw_angles[0]<<","<<m_raw_angles[1]<<","<<m_raw_angles[2]<<","<<m_raw_angles[3]<<";";
+        qDebug()<< "______________________________________________________________";
+    }
+
+    std::vector<double> calculated_current = rawAngles_to_current(m_raw_angles);
+    if(current_joint_angles.size() == 4){
+        qDebug()<< "______________________________________________________________";
+        qDebug()<< "Angles des moteurs retenus : "<<calculated_current[0]<<","<<calculated_current[1]<<","<<calculated_current[2]<<","<<calculated_current[3]<<";";
+        qDebug()<< "______________________________________________________________";
+    }
+
+    current_joint_angles = angle_filter(calculated_current);
+    if(current_joint_angles.size() == 4){
+        qDebug()<< "______________________________________________________________";
+        qDebug()<< "Angles des moteurs lissés : "<<-current_joint_angles[0]<<","<<current_joint_angles[1]<<","<<-current_joint_angles[2]<<","<<-current_joint_angles[3]<<";";
+        qDebug()<< "______________________________________________________________";
+    }
+    emit anglesToServ(-current_joint_angles[0],current_joint_angles[1],current_joint_angles[2],current_joint_angles[3]);
 }
 
 
@@ -181,13 +296,22 @@ void ArmGeometry::calibrateZero()
 {
     // On enregistre la position actuelle comme étant le nouveau "0"
     for(int index = 0; index<m_raw_angles.size(); index++){
-        if (m_raw_angles[index] != m_offsets[index]){
+        if (m_raw_angles[index] != m_offsets[index] && m_raw_angles[index] != FAILURE_INDEX && index != 1){
             m_offsets[index] = m_raw_angles[index];
+        }
+        else if(m_raw_angles[index] == FAILURE_INDEX){
+            if(index==1){
+                emit SClog("LACKING DATA ON MOTOR BASE -> MEMBRE 1 (Normal), please make sure it is placed at 90°");
+            }
+            else{
+                emit SClog("LACKING DATA ON MOTORS (Issue), please make sure to place the arm correctly for calibration");
+            }
         }
     }
     QString offsets_string;
     for (double offset : m_offsets) {
         offsets_string += QString::number(offset) + ", ";
     }
+    m_prev_filtered_angles ={0.0, 0.0, 0.0, 0.0};
     emit SClog("CALIBRATION EFFECTUEE. Nouveaux offsets : " + offsets_string);
 }

@@ -26,7 +26,7 @@ public slots:
     void on_msg_clicked();
 
     void on_portchanged(int port);
-    void on_results(uint8_t angleA, uint8_t angleB, uint8_t angleC, uint8_t angleD, uint8_t angleE);
+    void on_results(int8_t angleA, int8_t angleB, int8_t angleC, int8_t angleD);
 
 
 signals:

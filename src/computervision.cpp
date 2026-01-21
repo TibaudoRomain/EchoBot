@@ -5,8 +5,8 @@
 #include <opencv2/objdetect/aruco_detector.hpp>
 #include <QPair>
 
-computerVision::computerVision() {
-    camera = new Camera(1);
+computerVision::computerVision(int start_fps) {
+    camera = new Camera(start_fps);
     connect(camera, &Camera::frame_out, this, &computerVision::on_frameOut);
     detectorParams = cv::aruco::DetectorParameters();
 
@@ -27,27 +27,27 @@ void computerVision::on_frameOut(cv::Mat RFrame, std::optional<cv::Mat> DFrame){
     currentFrame.grayscale = grayscale;
     currentFrame.rgb = RFrame.clone();
 
-    qDebug()<<"Frame copied to computer vision buffer";
-    qDebug() << "RGB dimensions:" << currentFrame.rgb.cols << "x" << currentFrame.rgb.rows;
+    //qDebug()<<"Frame copied to computer vision buffer";
+    //qDebug() << "RGB dimensions:" << currentFrame.rgb.cols << "x" << currentFrame.rgb.rows;
 
     if(DFrame.has_value()){
         currentFrame.depth = DFrame.value().clone();
-        qDebug() << "Depth dimensions:" << currentFrame.depth.cols << "x" << currentFrame.depth.rows;
+        //qDebug() << "Depth dimensions:" << currentFrame.depth.cols << "x" << currentFrame.depth.rows;
     }
     cv::GaussianBlur(currentFrame.grayscale,blurred, cv::Size(5,5),1);
     currentFrame.grayscale = blurred.clone();
 
     find_arucos(currentFrame.grayscale);
-    qDebug()<<"Aruco search done!";
+    //qDebug()<<"Aruco search done!";
 
 
     emit sendCalcResults(estimate_aruco_pos(aruco_corners));
 
 
-    qDebug()<<"Aruco positions converted into real world coordinates!";
+    //qDebug()<<"Aruco positions converted into real world coordinates!";
 
     currentFrame.toDisplay = highlight_arucos(currentFrame);
-    qDebug()<<"Sending image to UI";
+    //qDebug()<<"Sending image to UI";
     display_image(currentFrame.toDisplay, true);
 }
 
@@ -60,7 +60,7 @@ void computerVision::find_arucos(cv::Mat RGB){
     detector->detectMarkers(RGB,aruco_corners,aruco_ids,aruco_rejected);
 
     if (aruco_corners.size() != 0){
-        qDebug()<< aruco_corners.size() << " arucos trouvés !";
+        //qDebug()<< aruco_corners.size() << " arucos trouvés !";
     }
 }
 
@@ -140,7 +140,7 @@ cv::Mat computerVision::highlight_arucos(FrameData in){
 
             // A. Récupération des données
             int id = aruco_ids[i];
-            cv::Vec3d angles = aruco_angles[i]; // x=Yaw, y=Pitch, z=Roll (selon votre implémentation)
+            //cv::Vec3d angles = aruco_angles[i]; // x=Yaw, y=Pitch, z=Roll (selon votre implémentation)
 
             // B. Formatage du texte
             // ID
@@ -148,7 +148,7 @@ cv::Mat computerVision::highlight_arucos(FrameData in){
 
             // Angles (arrondis à 1 décimale pour ne pas surcharger l'écran)
             // On utilise cv::format ou snprintf pour la propreté
-            std::string angleText = cv::format("Y:%.1f P:%.1f R:%.1f", angles[0], angles[1], angles[2]);
+            //std::string angleText = cv::format("Y:%.1f P:%.1f R:%.1f", angles[0], angles[1], angles[2]);
 
             // C. Calcul de la position du texte
             // On se place au premier coin (haut-gauche généralement)
@@ -160,8 +160,8 @@ cv::Mat computerVision::highlight_arucos(FrameData in){
                         cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 255, 0), 2);
 
             // Afficher les angles juste en dessous de l'ID
-            cv::putText(image, angleText, textPos + cv::Point(0, -5),
-                        cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 255, 0), 1);
+            //cv::putText(image, angleText, textPos + cv::Point(0, -5),
+                        //cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 255, 0), 1);
         }
     }
 
@@ -169,17 +169,17 @@ cv::Mat computerVision::highlight_arucos(FrameData in){
         std::vector<cv::Point> aruco_int(aruco.begin(), aruco.end());
         cv::polylines(image, aruco_int, true, {0,255,0}, 2);
     }
-    qDebug()<<"balise 4.2";
+    //qDebug()<<"balise 4.2";
     for (const vector<cv::Point2f> &rejected : aruco_rejected){
         std::vector<cv::Point> rejected_int(rejected.begin(), rejected.end());
         cv::polylines(image, rejected_int, true, {0,0,255}, 2);
     }
-    qDebug()<<"balise 4.3";
+    //qDebug()<<"balise 4.3";
     return image;
 }
 
 void computerVision::display_image(cv::Mat image_to_display, bool is_bgr){
-    qDebug()<<"Trying to display frame";
+    //qDebug()<<"Trying to display frame";
 
     if (image_to_display.empty()) {
         qWarning() << "Cannot display an empty cv::Mat.";
@@ -187,32 +187,32 @@ void computerVision::display_image(cv::Mat image_to_display, bool is_bgr){
     }
 
     if(is_bgr){
-        qDebug()<<"BGR frame !";
+        //qDebug()<<"BGR frame !";
         cv::Mat frame_to_display;
         cv::cvtColor(image_to_display,frame_to_display, cv::COLOR_BGR2RGB);
-        qDebug()<<"Converted to RGB";
+        //qDebug()<<"Converted to RGB";
         image = QImage((uchar*) frame_to_display.data, frame_to_display.cols, frame_to_display.rows, frame_to_display.step, QImage::Format_RGB888).copy();
         if(image.isNull()){
-            qDebug()<<"Image is NULL";
+            //qDebug()<<"Image is NULL";
             return;
         }
         else {
-            qDebug()<<"Dimension image : "<< image.size();
+            //qDebug()<<"Dimension image : "<< image.size();
         }
     }
     else{
-        qDebug()<<"RGB frame !";
+        //qDebug()<<"RGB frame !";
         image = QImage((uchar*) image_to_display.data, image_to_display.cols, image_to_display.rows, image_to_display.step, QImage::Format_RGB888).copy();
         if(image.isNull()){
-            qDebug()<<"Image is NULL";
+            //qDebug()<<"Image is NULL";
             return;
         }
         else {
-            qDebug()<<"Dimension image : "<< image.size();
+            //qDebug()<<"Dimension image : "<< image.size();
         }
     }
     emit sendImage(image);
-    qDebug()<<"Image sent";
+    //qDebug()<<"Image sent";
 }
 
 

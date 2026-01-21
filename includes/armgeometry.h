@@ -24,6 +24,10 @@
 
 #define FAILURE_INDEX 999
 
+#define AXIS_X 0
+#define AXIS_Y 1
+#define AXIS_Z 2
+
 
 using namespace std;
 
@@ -34,7 +38,7 @@ public:
     ArmGeometry();
 
 signals:
-    void anglesCalculated(std::vector<double> angles);
+    void anglesToServ(int8_t A, int8_t B,int8_t C,int8_t D);
     void SClog(QString message_to_display);
 
 public slots:
@@ -42,23 +46,34 @@ public slots:
     void calibrateZero();
 
 private:
+    double min_alpha = 0.05;
+    double max_alpha = 0.8;
+    double angle_dif_threshold = 5.0;
+
     //map<int, cv::Mat> _arucoAngles_old;
     std::vector<double> m_offsets = {0.0, 0.0, 0.0, 0.0};
     std::vector<double> m_raw_angles = {0.0, 0.0, 0.0, 0.0};
+    std::vector<double> m_prev_filtered_angles = {0.0, 0.0, 0.0, 0.0};
     vector<double> current_joint_angles;
 
 
     map<int, pair<int,int>> whereAreArucos = {{0,{BASE,FACE_SUD}},{1,{BASE,FACE_NORD}},
-                                               {2,{MEMBRE_1,FACE_EST}},
+                                               //{2,{MEMBRE_1,FACE_EST}},
                                                {3,{MEMBRE_2, FACE_HAUT}},{4,{MEMBRE_2, FACE_SUD}},{5,{MEMBRE_2, FACE_BAS}},{6,{MEMBRE_2, FACE_NORD}},
-                                               {7,{MEMBRE_3, FACE_HAUT}},{8,{MEMBRE_3, FACE_SUD}},{9,{MEMBRE_3, FACE_BAS}},{10,{MEMBRE_3,FACE_NORD}},
-                                               {11,{MEMBRE_4, FACE_HAUT}},{12,{MEMBRE_4,FACE_SUD}},{13,{MEMBRE_4,FACE_BAS}},{14,{MEMBRE_4,FACE_NORD}}};
+                                               {14,{MEMBRE_3, FACE_HAUT}},{8,{MEMBRE_3, FACE_SUD}},{9,{MEMBRE_3, FACE_BAS}},{10,{MEMBRE_3,FACE_NORD}},
+                                               {11,{MEMBRE_4, FACE_HAUT}},{12,{MEMBRE_4,FACE_SUD}},{13,{MEMBRE_4,FACE_BAS}},{7,{MEMBRE_4,FACE_NORD}}};
 
+
+    cv::Mat Old_base;
 
     // Helpers
     cv::Mat getRotationForMember(int memberId, const std::map<int, cv::Mat> &detected_arucos);
     cv::Mat getCorrectionMatrix(int faceId);
-    cv::Vec3d rotationMatrixToEulerAngles(cv::Mat &R);
+    double getRobustAngle(cv::Mat R_rel, int Axis);
+
+    std::vector<double> get_raw_angles(std::map<int, cv::Mat> ArucoRotationMatrices);
+    std::vector<double> rawAngles_to_current(std::vector<double> Raw_Angles);
+    std::vector<double> angle_filter(std::vector<double> Pre_filter_angles);
 };
 
 #endif // ARMGEOMETRY_H
